@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Logic Coverage Web Application</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 15px;
+      background: #e8f0e0;
+      color: #111;
+      padding: 24px 40px;
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 1.6em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+
+    /* ── Input panel ── */
+    .input-panel {
+      border: 2px solid #333;
+      padding: 14px 18px;
+      margin-bottom: 18px;
+      background: #f4f9ee;
+    }
+
+    .input-panel p {
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+
+    .ops-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px 0;
+      text-align: center;
+      border: 1px solid #888;
+      padding: 8px;
+      margin-bottom: 12px;
+      background: #fff;
+    }
+
+    .ops-grid span { padding: 2px 0; }
+
+    .predicate-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .predicate-row label { font-size: 1.1em; white-space: nowrap; }
+
+    .predicate-row input[type="text"] {
+      flex: 1;
+      font-family: monospace;
+      font-size: 1em;
+      padding: 4px 8px;
+      border: 1px solid #555;
+    }
+
+    /* ── Button rows ── */
+    .btn-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .btn-row label {
+      min-width: 130px;
+      text-align: right;
+      font-size: 0.95em;
+    }
+
+    button {
+      font-family: "Times New Roman", Times, serif;
+      font-size: 0.9em;
+      padding: 4px 14px;
+      border: 1px solid #555;
+      background: #f0f0e8;
+      cursor: pointer;
+    }
+
+    button:hover { background: #d8e8c8; }
+
+    /* ── Error ── */
+    .error-box {
+      background: #fff0f0;
+      border: 1px solid #c00;
+      color: #c00;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+    }
+
+    /* ── Results ── */
+    .results { margin-top: 20px; }
+
+    .results h2 {
+      font-size: 1.15em;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #888;
+      padding-bottom: 4px;
+    }
+
+    .results h3 {
+      font-size: 1em;
+      margin: 12px 0 6px;
+      color: #444;
+    }
+
+    /* Tables */
+    table {
+      border-collapse: collapse;
+      font-size: 0.9em;
+      margin-bottom: 14px;
+    }
+
+    th, td {
+      border: 1px solid #888;
+      padding: 4px 10px;
+      text-align: center;
+    }
+
+    th { background: #d8e8c8; font-weight: bold; }
+
+    tr:nth-child(even) { background: #f8fbf4; }
+
+    .result-true  { color: #006600; font-weight: bold; }
+    .result-false { color: #880000; font-weight: bold; }
+
+    /* Per-clause criterion tables */
+    .criterion-table { margin-bottom: 8px; }
+
+    .none-label { color: #999; font-style: italic; }
+
+    /* Criteria description box */
+    .desc-box {
+      border: 1px solid #aaa;
+      background: #fff;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 0.9em;
+      line-height: 1.6;
+    }
+
+    .desc-box ul { padding-left: 20px; }
+    .desc-box li { margin-bottom: 2px; }
+  </style>
+</head>
+<body>
+
+<h1>Logic Coverage Web Application</h1>
+
+<!-- ── Input Panel ── -->
+<div class="input-panel">
+  <p>
+    Please enter your logic expression in the text box below, using the
+    following logic operators. The variables can be any alphanumeric string.
+    Parentheses can be used in the logic expression.
+  </p>
+
+  <div class="ops-grid">
+    <span>Not&nbsp;: <strong>!</strong></span>
+    <span>And&nbsp;: <strong>&amp;</strong></span>
+    <span>Or&nbsp;: <strong>|</strong></span>
+    <span>Implication&nbsp;: <strong>&gt;</strong></span>
+    <span>Exclusive Or&nbsp;: <strong>^</strong></span>
+    <span>Equivalence&nbsp;: <strong>=</strong></span>
+  </div>
+
+  <form method="POST">
+    <div class="predicate-row">
+      <label>P =</label>
+      <input type="text" name="predicate" value="{{ predicate }}" autofocus
+             placeholder="e.g.  a &amp; b | c">
+    </div>
+
+    <br>
+
+    <div class="btn-row">
+      <label>Test Requirements:</label>
+      <button type="submit" name="action" value="truth_table">Truth Table</button>
+      <button type="submit" name="action" value="pc">PC</button>
+      <button type="submit" name="action" value="cc">CC</button>
+      <button type="submit" name="action" value="coc">CoC</button>
+    </div>
+
+    <div class="btn-row">
+      <label>Tests:</label>
+      <button type="submit" name="action" value="gacc">GACC</button>
+      <button type="submit" name="action" value="cacc">CACC</button>
+      <button type="submit" name="action" value="racc">RACC</button>
+      <button type="submit" name="action" value="gicc">GICC</button>
+      <button type="submit" name="action" value="ricc">RICC</button>
+    </div>
+  </form>
+</div>
+
+<!-- ── Error ── -->
+{% if error %}
+<div class="error-box"><strong>Error:</strong> {{ error }}</div>
+{% endif %}
+
+<!-- ── Results ── -->
+{% if result %}
+<div class="results">
+
+  <!-- Clauses found -->
+  <p style="margin-bottom:10px;">
+    <strong>Clauses found:</strong>
+    {% for c in result.clauses %}
+      <code>{{ c }}</code>{% if not loop.last %}, {% endif %}
+    {% endfor %}
+    &nbsp;&nbsp;({{ result.clauses | length }} clause{{ 's' if result.clauses | length != 1 }})
+  </p>
+
+  <!-- ── Truth Table (always shown) ── -->
+  <h2>Truth Table</h2>
+  <table>
+    <thead>
+      <tr>
+        {% for c in result.clauses %}<th>{{ c }}</th>{% endfor %}
+        <th>P</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in result.truth_table %}
+      <tr>
+        {% for c in result.clauses %}
+          <td>{{ 'T' if row.assignments[c] else 'F' }}</td>
+        {% endfor %}
+        <td class="{{ 'result-true' if row.result else 'result-false' }}">
+          {{ 'T' if row.result else 'F' }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <!-- ── Action-specific results ── -->
+
+  {% if result.action == 'pc' %}
+  <h2>Predicate Coverage (PC)</h2>
+  <div class="desc-box">
+    Need at least one test where P is <strong>True</strong> and one where P is <strong>False</strong>.
+  </div>
+  <table>
+    <thead><tr><th>Requirement</th><th>Test</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>P = True</td>
+        <td>
+          {% if result.pc.true %}
+            <code>{{ result.pc.true }}</code>
+          {% else %}
+            <span class="none-label">infeasible (predicate is always False)</span>
+          {% endif %}
+        </td>
+      </tr>
+      <tr>
+        <td>P = False</td>
+        <td>
+          {% if result.pc.false %}
+            <code>{{ result.pc.false }}</code>
+          {% else %}
+            <span class="none-label">infeasible (predicate is always True)</span>
+          {% endif %}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  {% elif result.action == 'cc' %}
+  <h2>Clause Coverage (CC)</h2>
+  <div class="desc-box">
+    For each clause, need one test where the clause is <strong>True</strong>
+    and one where it is <strong>False</strong>.
+  </div>
+  <table>
+    <thead><tr><th>Clause</th><th>Clause = True</th><th>Clause = False</th></tr></thead>
+    <tbody>
+      {% for c in result.clauses %}
+      <tr>
+        <td><strong>{{ c }}</strong></td>
+        <td>
+          {% if result.cc[c].true %}
+            <code>{{ result.cc[c].true }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if result.cc[c].false %}
+            <code>{{ result.cc[c].false }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% elif result.action == 'coc' %}
+  <h2>Combinatorial Coverage (CoC)</h2>
+  <div class="desc-box">
+    All 2<sup>n</sup> combinations of clause truth values are required.
+    This is the full truth table above.
+  </div>
+  <p style="font-size:0.9em; color:#555;">
+    {{ result.truth_table | length }} test(s) required
+    ({{ result.clauses | length }} clause{{ 's' if result.clauses|length!=1 }},
+     2<sup>{{ result.clauses|length }}</sup> = {{ result.truth_table|length }}).
+  </p>
+
+  {% elif result.action == 'gacc' %}
+  <h2>General Active Clause Coverage (GACC)</h2>
+  <div class="desc-box">
+    For each <em>major clause</em> c, choose minor clause values so that c
+    <em>determines</em> P (flipping c changes P). Need one test with c = True
+    and one with c = False. Minor clause values may differ between the two tests.
+  </div>
+  <table>
+    <thead><tr><th>Major Clause</th><th>c = True (determines P)</th><th>c = False (determines P)</th></tr></thead>
+    <tbody>
+      {% for c in result.clauses %}
+      <tr>
+        <td><strong>{{ c }}</strong></td>
+        <td>
+          {% if result.gacc[c].true %}
+            <code>{{ result.gacc[c].true }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if result.gacc[c].false %}
+            <code>{{ result.gacc[c].false }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% elif result.action == 'cacc' %}
+  <h2>Correlated Active Clause Coverage (CACC)</h2>
+  <div class="desc-box">
+    Like GACC, but additionally the predicate must evaluate to
+    <strong>different values</strong> in the two tests for each major clause.
+  </div>
+  <table>
+    <thead><tr><th>Major Clause</th><th>c = True (P differs)</th><th>c = False (P differs)</th></tr></thead>
+    <tbody>
+      {% for c in result.clauses %}
+      <tr>
+        <td><strong>{{ c }}</strong></td>
+        <td>
+          {% if result.cacc[c].true %}
+            <code>{{ result.cacc[c].true }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if result.cacc[c].false %}
+            <code>{{ result.cacc[c].false }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% elif result.action == 'racc' %}
+  <h2>Restricted Active Clause Coverage (RACC)</h2>
+  <div class="desc-box">
+    Like CACC, but the <strong>minor clauses must have the same values</strong>
+    in both tests. The test pair shares a single minor-clause assignment where c
+    determines P; only c's value differs.
+  </div>
+  <table>
+    <thead><tr><th>Major Clause</th><th>c = True</th><th>c = False</th></tr></thead>
+    <tbody>
+      {% for c in result.clauses %}
+      <tr>
+        <td><strong>{{ c }}</strong></td>
+        <td>
+          {% if result.racc[c].true %}
+            <code>{{ result.racc[c].true }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if result.racc[c].false %}
+            <code>{{ result.racc[c].false }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% elif result.action == 'gicc' %}
+  <h2>General Inactive Clause Coverage (GICC)</h2>
+  <div class="desc-box">
+    For each clause c, find tests where c is <em>inactive</em> — i.e., flipping c
+    does <strong>not</strong> change P. Need one test with c = True (inactive) and
+    one with c = False (inactive). Minor clause values may differ between the two tests.
+  </div>
+  <table>
+    <thead><tr><th>Clause</th><th>c = True (inactive)</th><th>c = False (inactive)</th></tr></thead>
+    <tbody>
+      {% for c in result.clauses %}
+      <tr>
+        <td><strong>{{ c }}</strong></td>
+        <td>
+          {% if result.gicc[c].true %}
+            <code>{{ result.gicc[c].true }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if result.gicc[c].false %}
+            <code>{{ result.gicc[c].false }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% elif result.action == 'ricc' %}
+  <h2>Restricted Inactive Clause Coverage (RICC)</h2>
+  <div class="desc-box">
+    Like GICC, but <strong>minor clauses must have the same values</strong>
+    in both tests. The pair shares a minor-clause assignment where c is inactive;
+    only c's value differs.
+  </div>
+  <table>
+    <thead><tr><th>Clause</th><th>c = True (inactive)</th><th>c = False (inactive)</th></tr></thead>
+    <tbody>
+      {% for c in result.clauses %}
+      <tr>
+        <td><strong>{{ c }}</strong></td>
+        <td>
+          {% if result.ricc[c].true %}
+            <code>{{ result.ricc[c].true }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if result.ricc[c].false %}
+            <code>{{ result.ricc[c].false }}</code>
+          {% else %}
+            <span class="none-label">infeasible</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  {% endif %}
+
+</div>
+{% endif %}
+
+<br><br>
+<footer style="font-size:0.8em; font-style:italic; color:#555;">
+  Companion software to <em>Introduction to Software Testing</em>, Ammann and Offutt.<br>
+  CS 395 Software Testing – Northeastern University
+</footer>
+
+</body>
+</html>
