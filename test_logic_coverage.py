@@ -59,6 +59,10 @@ def test_single_clause_parsed():
     lc = LogicCoverage("a")
     assert lc.clauses == ["a"]
 
+def test_single_clause_parsed_Error():
+    lc = LogicCoverage("a")
+    assert lc.clauses == ["b"]
+
 def test_two_clauses_parsed():
     lc = LogicCoverage("a & b")
     assert set(lc.clauses) == {"a", "b"}
